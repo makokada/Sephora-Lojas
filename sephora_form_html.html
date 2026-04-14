@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Produtos NARS</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f0f0;padding:24px 12px;min-height:100vh}
+.card{background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,0.1);padding:28px;max-width:680px;margin:0 auto}
+h2{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:24px;padding-bottom:12px;border-bottom:2px solid #f0f0f0}
+.section-title{font-size:13px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:20px 0 12px}
+.field{margin-bottom:14px}
+label{display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:5px}
+input[type=text],input[type=number],select{width:100%;padding:9px 12px;font-size:14px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#1a1a1a;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='%23888'%3E%3Cpath d='M5 7l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+select:disabled{background-color:#f5f5f5;color:#aaa;cursor:not-allowed}
+input:focus,select:focus{outline:2px solid #0078d4;outline-offset:1px;border-color:#0078d4}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row3{display:grid;grid-template-columns:1fr 1fr 80px;gap:10px;align-items:end}
+.sku-block{background:#f8f8f8;border:1px solid #e5e5e5;border-radius:8px;padding:14px;margin-bottom:10px;position:relative}
+.sku-num{font-size:12px;font-weight:700;color:#888;margin-bottom:10px}
+.remove-btn{position:absolute;top:10px;right:10px;background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;line-height:1;padding:2px 6px}
+.remove-btn:hover{color:#e00}
+.add-btn{width:100%;padding:10px;background:#fff;border:2px dashed #ccc;border-radius:6px;font-size:14px;color:#666;cursor:pointer;margin:4px 0 20px}
+.add-btn:hover{border-color:#0078d4;color:#0078d4}
+.submit-btn{width:100%;padding:12px;background:#0078d4;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer}
+.submit-btn:hover{background:#006abc}
+.submit-btn:disabled{background:#aaa;cursor:not-allowed}
+.msg{margin-top:14px;padding:12px 16px;border-radius:6px;font-size:14px;display:none}
+.msg.success{background:#dff6dd;border:1px solid #9ad89a;color:#1a5c1a}
+.msg.error{background:#fde7e9;border:1px solid #f5a3a8;color:#8c0d17}
+.search-wrap{position:relative}
+.search-wrap input{padding-right:30px}
+.clear-x{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#aaa;font-size:16px;cursor:pointer;display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h2>Registro de Produtos NARS</h2>
+
+  <div class="section-title">Identificação</div>
+  <div class="field">
+    <label for="responsavel">Responsável</label>
+    <input type="text" id="responsavel" placeholder="Seu nome">
+  </div>
+
+  <div class="section-title">Loja</div>
+  <div class="row">
+    <div class="field">
+      <label for="sel-estado">Estado</label>
+      <select id="sel-estado"><option value="">Selecione...</option></select>
+    </div>
+    <div class="field">
+      <label for="sel-loja">Loja</label>
+      <select id="sel-loja" disabled><option value="">Selecione...</option></select>
+    </div>
+  </div>
+
+  <div class="section-title">Produtos</div>
+  <div id="sku-list"></div>
+  <button class="add-btn" type="button" id="add-sku">+ Adicionar produto</button>
+
+  <button class="submit-btn" type="button" id="btn-enviar">Enviar registro</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<script>
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbxeWaI33dGidkuW5qDpDA6k6f2aqYcPVa-G_iY6sPA5JYsKswvqEdDt5vJBEAe7CzZyvg/exec';
+
+const lojas = {
+  "SP — São Paulo":["SEPHORA CJ SHOPS","SEPHORA IGUATEMI ALPHAVILLE","SEPHORA JK IGUATEMI","SEPHORA JUNDIAI SHOPPING","SEPHORA MOOCA","SEPHORA MORUMBI SHOPPING","SEPHORA PÁTIO PAULISTA","SEPHORA SHOPPING ANALIA FRANCO","SEPHORA SHOPPING CIDADE JARDIM","SEPHORA SHOPPING ELDORADO","SEPHORA SHOPPING IGUATEMI CAMPINAS","SEPHORA SHOPPING PÁTIO HIGIENOPOLIS","SEPHORA SANTOS","SEPHORA SOROCABA","SEPHORA IBIRAPUERA","SEPHORA CENTER NORTE","SEPHORA SÃO JOSÉ DOS CAMPOS","SEPHORA SÃO JOSÉ DO RIO PRETO","SEPHORA UBERLÂNDIA","SEPHORA SÃO CAETANO","SEPHORA FARIA LIMA"],
+  "RJ — Rio de Janeiro":["SEPHORA BARRASHOPPING","SEPHORA LOJA RIO DESIGN BARRA","SEPHORA PLAZA SHOPPING NITEROI","SEPHORA SHOPPING RIO SUL","SEPHORA LEBLON"],
+  "DF — Brasília":["SEPHORA IGUATEMI BRASILIA","SEPHORA PARK SHOPPING BRASILIA"],
+  "GO — Goiás":["SEPHORA FLAMBOYANT SHOPPING CENTER"],
+  "PR — Paraná":["SEPHORA PARK SHOPPING BARIGUI","SEPHORA SHOPPING PÁTIO BATEL","SEPHORA LONDRINA"],
+  "RS — Rio Grande do Sul":["SEPHORA IGUATEMI PORTO ALEGRE"],
+  "SC — Santa Catarina":["SEPHORA BALNEÁRIO","SEPHORA FLORIANÓPOLIS"],
+  "BA — Bahia":["SEPHORA SALVADOR SHOPPING"],
+  "PE — Pernambuco":["SEPHORA SHOPPING RIOMAR RECIFE"],
+  "CE — Ceará":["SEPHORA FORTALEZA - RIOMAR"],
+  "AL — Alagoas":["SEPHORA MACEIÓ"],
+  "PA — Pará":["SEPHORA BELÉM"],
+  "MG — Minas Gerais":["SEPHORA BH BOULEVARD"]
+};
+
+const produtos = [
+  {ean:"607845040163",nome:"Blush - Deep Throat (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040811",nome:"Blush - Behave (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"194251004631",nome:"Soft Matte Tinted Lip Balm - Intimate",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"607845027706",nome:"Powermatte Lip Pigment - Light My Fire",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"194251004686",nome:"Soft Matte Tinted Lip Balm - Dangeours Affair",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"607845027676",nome:"Powermatte Lip Pigment - Low Rider",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845051589",nome:"Liquid Blush - Dolce Vita",cat:"CHEEKS",linha:"Liquid Blush"},
+  {ean:"607845040682",nome:"Blush - Bumpy Ride (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"194251136011",nome:"Light Reflecting Eye Brightener - Goldeneye",cat:"COMPLEXION",linha:"Light Reflecting Eye Brightner"},
+  {ean:"607845066132",nome:"Natural Radiant Longwear Foundation - Stromboli",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845015031",nome:"The Multiple - South Beach (Versão Antiga)",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146003",nome:"Afterglow Liquid Blush - Orgasm Rush",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"194251133652",nome:"Afterglow Sensual Shine Lipstick - Breathless",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251132075",nome:"Afterglow Liquid Blush - Insatiable",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"607845090786",nome:"Precision Lip Liner - Holy Red",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"194251136097",nome:"Soft Matte Advanced Perfecting Powder - 4 - Bay",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251136127",nome:"Soft Matte Advanced Perfecting Powder - 7 - Offshore",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251136134",nome:"Soft Matte Advanced Perfecting Powder - 8 - Seafront",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251005584",nome:"Yachiyo Kabuki Brush - Pincel",cat:"BRUSHES",linha:"Yachiyo Kabuki"},
+  {ean:"194251009346",nome:"Mie Kabuki Brush - Pincel",cat:"BRUSHES",linha:"Mie Kabuki"},
+  {ean:"194251005614",nome:"Ita Kabuki Brush - Pincel",cat:"BRUSHES",linha:"Ita Kabuki"},
+  {ean:"607845066262",nome:"Natural Radiant Longwear Foundation - Marquises",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845012320",nome:"Radiant Creamy Concealer - Vanilla",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012344",nome:"Radiant Creamy Concealer - Custard",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"194251142838",nome:"Laguna Ultimate Face Palette - I",cat:"Gifting",linha:"Paleta Summer Seductive"},
+  {ean:"607845012665",nome:"Radiant Creamy Concealer - Creme Brulee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845270102",nome:"MINI Climax Mascara",cat:"EYES",linha:"Mini Climax"},
+  {ean:"194251139906",nome:"Powermatte High-Intensity Lip Pencil - Cruella",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"607845015178",nome:"The Multiple - Orgasm (Versão Antiga)",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251143316",nome:"Afterglow Irresistible Eyeshadow Palette",cat:"GIFTING",linha:"Afterglow"},
+  {ean:"607845012337",nome:"Radiant Creamy Concealer - Honey",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012351",nome:"Radiant Creamy Concealer - Ginger",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"194251070520",nome:"Light Reflecting Foundation - Punjab",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"607845081944",nome:"High-Pigment Longwear Eyeliner - Mambo",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"194251139852",nome:"Powermatte High-Intensity Lip Pencil - Born To Be Wild",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"607845012276",nome:"Radiant Creamy Concealer - Tiramisu",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"194251003993",nome:"Soft Matte Complete Foundation - Mont Blanc",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"607845012672",nome:"Radiant Creamy Concealer - Cannelle",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"194251002989",nome:"Radiant Creamy Color Corrector - Medium",cat:"COMPLEXION",linha:"Radiant Creamy Color Corrector"},
+  {ean:"194251004068",nome:"Soft Matte Complete Foundation - Punjab",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251014234",nome:"Climax Liquid Eyeliner",cat:"EYES",linha:"Climax"},
+  {ean:"607845070085",nome:"Climax Mascara",cat:"EYES",linha:"Climax"},
+  {ean:"194251133546",nome:"Powermatte Lipstick - American Woman",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251137858",nome:"Explicit Lipstick - Rendez-Vous",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251137919",nome:"Explicit Lipstick - Luscious",cat:"LIPS",linha:"Explicit"},
+  {ean:"607845027713",nome:"Powermatte Lip Pigment - Don't Stop",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"194251137841",nome:"Explicit Lipstick - Body Heat",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251070384",nome:"Light Reflecting Foundation - Mont Blanc",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251136974",nome:"Explicit Lipstick - Insolent",cat:"LIPS",linha:"Explicit"},
+  {ean:"607845018322",nome:"Foundation Pump - Dosador Para Base Líquida",cat:"BODY/ACCESSORIES",linha:"Foundation Pump"},
+  {ean:"194251004013",nome:"Soft Matte Complete Foundation - Gobi",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004044",nome:"Soft Matte Complete Foundation - Vienna",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251139845",nome:"Powermatte High-Intensity Lip Pencil - Bohemian Rhapsody",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251143064",nome:"Total Seduction Eyeshadow Stick - Enigmatic",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"607845012764",nome:"Soft Matte Complete Concealer - Vanilla",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012771",nome:"Soft Matte Complete Concealer - Creme Brulee",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"194251070421",nome:"Light Reflecting Foundation - Gobi",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070544",nome:"Light Reflecting Foundation - Patagonia",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251142913",nome:"Laguna Ultimate Face Palette - II",cat:"Gifting",linha:"Paleta Summer Seductive"},
+  {ean:"194251137940",nome:"Explicit Lipstick - Temptation",cat:"LIPS",linha:"Explicit"},
+  {ean:"607845066118",nome:"Natural Radiant Longwear Foundation - Santa Fe",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"194251070360",nome:"Light Reflecting Foundation - Oslo",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251139814",nome:"Powermatte High-Intensity Lip Pencil - Dolce Vita",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251139869",nome:"Powermatte High-Intensity Lip Pencil - Endless Love",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251137827",nome:"Explicit Lipstick - Indecent",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251137896",nome:"Explicit Lipstick - Liaison",cat:"LIPS",linha:"Explicit"},
+  {ean:"607845019725",nome:"MINI Radiant Creamy Concealer - Nougatine",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251070667",nome:"Light Reflecting Foundation - Barcelona",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251136714",nome:"Laguna Bronzing Powder - 01",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251136721",nome:"Laguna Bronzing Powder - 02 (Original)",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251143033",nome:"Total Seduction Eyeshadow Stick - Mambo",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"607845013570",nome:"Afterglow Lip Balm - Turbo",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845019794",nome:"MINI Radiant Creamy Concealer - Honey",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019848",nome:"MINI Radiant Creamy Concealer - Ginger",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251070445",nome:"Light Reflecting Foundation - Salzburg",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070506",nome:"Light Reflecting Foundation - Fiji",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251139890",nome:"Powermatte High-Intensity Lip Pencil - Take Me Home",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251134482",nome:"Laguna Bronzing Cream - 01",cat:"CHEEKS",linha:"Bronzing Cream"},
+  {ean:"194251143026",nome:"Total Seduction Eyeshadow Stick - Strip Down",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"607845066156",nome:"Natural Radiant Longwear Foundation - Barcelona",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845012313",nome:"Radiant Creamy Concealer - Chantilly",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"194251004075",nome:"Soft Matte Complete Foundation - Patagonia",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004099",nome:"Soft Matte Complete Foundation - Santa Fe",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251016290",nome:"Soft Matte Primer",cat:"COMPLEXION",linha:"Soft Matte Primer"},
+  {ean:"607845019749",nome:"MINI Radiant Creamy Concealer - Cafe Au Lait",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251136066",nome:"Soft Matte Advanced Perfecting Powder - 1 - Cliff",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251133737",nome:"Afterglow Sensual Shine Lipstick - Turned On",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251143040",nome:"Total Seduction Eyeshadow Stick - Rebellion",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"194251145044",nome:"Explicit Lipstick - Unashamed",cat:"LIPS",linha:"Explicit"},
+  {ean:"607845066088",nome:"Natural Radiant Longwear Foundation - Punjab",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845081906",nome:"High-Pigment Longwear Eyeliner - Via Veneto",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"607845019718",nome:"MINI Radiant Creamy Concealer - Affogato",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251136028",nome:"Light Reflecting Eye Brightener - Impossible Dream",cat:"COMPLEXION",linha:"Light Reflecting Eye Brightner"},
+  {ean:"607845013594",nome:"Afterglow Lip Balm - Torrid",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845027669",nome:"Powermatte Lip Pigment - Save The Queen",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845023623",nome:"Pure Radiant Tinted Moisturizer - Terre Neuve",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845060413",nome:"Sheer Glow Foundation - Deauville",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060437",nome:"Sheer Glow Foundation - Punjab",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"194251070643",nome:"Light Reflecting Foundation - Vanuatu",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251133607",nome:"Powermatte Lipstick - Dragon Girl",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251133638",nome:"Powermatte Lipstick - Highway To Hell",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251136004",nome:"Light Reflecting Eye Brightener - Night Swan",cat:"COMPLEXION",linha:"Light Reflecting Eye Brightner"},
+  {ean:"194251139821",nome:"Powermatte High-Intensity Lip Pencil - American Woman",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251139876",nome:"Powermatte High-Intensity Lip Pencil - Kiss Me Deadly",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251139883",nome:"Powermatte High-Intensity Lip Pencil - Dragon Girl",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251146010",nome:"Afterglow Liquid Blush - Aragon",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"194251146027",nome:"Afterglow Liquid Blush - Secret Lover",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"607845022312",nome:"Radiance Primer SPF 35",cat:"COMPLEXION",linha:"Radiance Primer Spf 35"},
+  {ean:"194251004136",nome:"Soft Matte Complete Foundation - Barcelona",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070582",nome:"Light Reflecting Foundation - Santa Fe",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070681",nome:"Light Reflecting Foundation - Valencia",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251133539",nome:"Powermatte Lipstick - Tease Me",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251132037",nome:"Afterglow Liquid Blush - Behave",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"194251132044",nome:"Afterglow Liquid Blush - Dolce Vita",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"194251139937",nome:"Powermatte Lipstick - Get Lucky",cat:"LIPS",linha:"POWERMATTE LIPSTICK"},
+  {ean:"607845019770",nome:"MINI Radiant Creamy Concealer - Canelle",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251003986",nome:"Soft Matte Complete Foundation - Oslo",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004143",nome:"Soft Matte Complete Foundation - Valencia",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251077161",nome:"Afterglow Lip Shine - Orgasm",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077208",nome:"Afterglow Lip Shine - Nympho",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251133508",nome:"Powermatte Lipstick - Sweet Disposition",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"607845066033",nome:"Natural Radiant Longwear Foundation - Gobi",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845027621",nome:"Powermatte Lip Pigment - Walk This Way",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845013723",nome:"Radiant Creamy Concealer - Madeleine",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845019701",nome:"MINI Radiant Creamy Concealer - Chantilly",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251004082",nome:"Soft Matte Complete Foundation - Vallauris",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070629",nome:"Light Reflecting Foundation - Stromboli",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070728",nome:"Light Reflecting Foundation - Syracuse",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"607845023630",nome:"Pure Radiant Tinted Moisturizer - Finland",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845023647",nome:"Pure Radiant Tinted Moisturizer - Alaska",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845060475",nome:"Sheer Glow Foundation - Stromboli",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845090724",nome:"Precision Lip Liner - Vence",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090816",nome:"Precision Lip Liner - Mariachi",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090922",nome:"Precision Lip Liner - Le Lavandou",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"194251004051",nome:"Soft Matte Complete Foundation - Fiji",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251077185",nome:"Afterglow Lip Shine - Unbrok",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251133591",nome:"Powermatte Lipstick - Notorious",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251133645",nome:"Powermatte Lipstick - Night Moves",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251136073",nome:"Soft Matte Advanced Perfecting Powder - 2 - Cove",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"607845070306",nome:"Climax Extreme Mascara",cat:"EYES",linha:"Climax Extreme"},
+  {ean:"607845066057",nome:"Natural Radiant Longwear Foundation - Deauville",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066071",nome:"Natural Radiant Longwear Foundation - Fiji",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"194251013312",nome:"Pure Radiant Tinted Moisturizer - Gotland",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845023654",nome:"Pure Radiant Tinted Moisturizer - Groeland",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845064107",nome:"Sheer Glow Foundation - Vallauris",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845012788",nome:"Soft Matte Complete Concealer - Cannelle",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845090748",nome:"Precision Lip Liner - Rosebud",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"194251004112",nome:"Soft Matte Complete Foundation - Stromboli",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004235",nome:"Soft Matte Complete Foundation - Macao",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251133553",nome:"Powermatte Lipstick - Thunder Kiss",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251133720",nome:"Afterglow Sensual Shine Lipstick - Idolized",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"607845066163",nome:"Natural Radiant Longwear Foundation - Valencia",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845027607",nome:"Powermatte Lip Pigment - Slow Ride",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845012382",nome:"Radiant Creamy Concealer - Amande",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012399",nome:"Radiant Creamy Concealer - Café",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012405",nome:"Radiant Creamy Concealer - Cacao",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012702",nome:"Radiant Creamy Concealer - Hazelnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012719",nome:"Radiant Creamy Concealer - Dark Coffee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012290",nome:"Radiant Creamy Concealer - Walnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012306",nome:"Radiant Creamy Concealer - Truffle",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845013785",nome:"Radiant Creamy Concealer - Chocolat",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845060482",nome:"Sheer Glow Foundation - Syracuse",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845090731",nome:"Precision Lip Liner - Lerins",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845019886",nome:"MINI Radiant Creamy Concealer - Chestnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019909",nome:"MINI Radiant Creamy Concealer - Truffle",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251004006",nome:"Soft Matte Complete Foundation - Yukon",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070469",nome:"Light Reflecting Foundation - Deauville",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070841",nome:"Light Reflecting Foundation - Belem",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070940",nome:"Light Reflecting Foundation - Iguaçu",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070988",nome:"Light Reflecting Foundation - Zambie",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251071008",nome:"Light Reflecting Foundation - Mali",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251132020",nome:"Afterglow Liquid Blush - Orgasm",cat:"CHEEKS",linha:"AFTERGLOW LIQUID BLUSH"},
+  {ean:"607845066040",nome:"Natural Radiant Longwear Foundation - Salzburg",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845012283",nome:"Radiant Creamy Concealer - Sucre D'Orge",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845060420",nome:"Sheer Glow Foundation - Mont Blanc",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060444",nome:"Sheer Glow Foundation - Fiji",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048664",nome:"Sheer Glow Foundation - Valencia",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048671",nome:"Sheer Glow Foundation - Aruba",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845012825",nome:"Soft Matte Complete Concealer - Ginger",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012856",nome:"Soft Matte Complete Concealer - Chestnut",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012863",nome:"Soft Matte Complete Concealer - Amande",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012870",nome:"Soft Matte Complete Concealer - Hazelnut",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012894",nome:"Soft Matte Complete Concealer - Cacao",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022589",nome:"Soft Matte Complete Concealer - Walnut",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845081951",nome:"High-Pigment Longwear Eyeliner - Mulholland Drive",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"607845019763",nome:"MINI Radiant Creamy Concealer - Cafe Con Leche",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251004129",nome:"Soft Matte Complete Foundation - Vanuatu",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004167",nome:"Soft Matte Complete Foundation - Syracuse",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004297",nome:"Soft Matte Complete Foundation - Zambie",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004303",nome:"Soft Matte Complete Foundation - Mali",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070964",nome:"Light Reflecting Foundation - Namibia",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251134512",nome:"Laguna Bronzing Cream - 04",cat:"CHEEKS",linha:"Bronzing Cream"},
+  {ean:"194251039442",nome:"Light Reflecting Multi-Action Treatment Lotion",cat:"MAKEUP",linha:"Narsskin Light Reflecting Multi-Action Treatment Lotion"},
+  {ean:"194251136103",nome:"Soft Matte Advanced Perfecting Powder - 5 - Sun Shore",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251136110",nome:"Soft Matte Advanced Perfecting Powder - 6 - High Tide",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251133744",nome:"Afterglow Sensual Shine Lipstick - Show Off",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"607845066019",nome:"Natural Radiant Longwear Foundation - Mont Blanc",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066187",nome:"Natural Radiant Longwear Foundation - Syracuse",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066217",nome:"Natural Radiant Longwear Foundation - Huahine",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066286",nome:"Natural Radiant Longwear Foundation - New Caledonia",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"194251013336",nome:"Pure Radiant Tinted Moisturizer - Mykonos",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845013730",nome:"Radiant Creamy Concealer - Cafe Au Lait",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845048503",nome:"Sheer Glow Foundation - Oslo",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048541",nome:"Sheer Glow Foundation - Salzburg",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048565",nome:"Sheer Glow Foundation - Vienna",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845022473",nome:"Soft Matte Complete Concealer - Cafe Con Leche",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022541",nome:"Soft Matte Complete Concealer - Toffee",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022596",nome:"Soft Matte Complete Concealer - Truffle",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022602",nome:"Soft Matte Complete Concealer - Chocolat",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845019831",nome:"MINI Radiant Creamy Concealer - Tiramisu",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019930",nome:"MINI Radiant Creamy Concealer - Café",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251004020",nome:"Soft Matte Complete Foundation - Salzburg",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004105",nome:"Soft Matte Complete Foundation - Sahel",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004273",nome:"Soft Matte Complete Foundation - Iguaçu",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070742",nome:"Light Reflecting Foundation - Tahoe",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070803",nome:"Light Reflecting Foundation - Cadiz",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251134505",nome:"Laguna Bronzing Cream - 03",cat:"CHEEKS",linha:"Bronzing Cream"},
+  {ean:"194251134529",nome:"Laguna Bronzing Cream - 05",cat:"CHEEKS",linha:"Bronzing Cream"},
+  {ean:"194251133522",nome:"Powermatte Lipstick - Killer Queen",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"607845048527",nome:"Sheer Glow Foundation - Yukon",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048787",nome:"Sheer Glow Foundation - New Caledonia",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"194251136035",nome:"Light Reflecting Eye Brightener - Magic Hour",cat:"COMPLEXION",linha:"Light Reflecting Eye Brightner"},
+  {ean:"194251136912",nome:"Light Reflecting Eye Brightener - Sunfire",cat:"COMPLEXION",linha:"Light Reflecting Eye Brightner"},
+  {ean:"194251139913",nome:"Powermatte Lipstick - Modern Love",cat:"LIPS",linha:"POWERMATTE LIPSTICK"},
+  {ean:"607845066316",nome:"Natural Radiant Longwear Foundation - Zambie",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845013839",nome:"Afterglow Lip Balm - Fast Lane",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845027645",nome:"Powermatte Lip Pigment - Get It On",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845023760",nome:"Pure Radiant Tinted Moisturizer - Cuzco",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251003009",nome:"Radiant Creamy Color Corrector - Medium Deep",cat:"COMPLEXION",linha:"Radiant Creamy Color Corrector"},
+  {ean:"607845013754",nome:"Radiant Creamy Concealer - Crema Catalana",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845019800",nome:"MINI Radiant Creamy Concealer - Crema Catalana",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845058526",nome:"MINI Radiant Creamy Concealer - Hazelnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019954",nome:"MINI Radiant Creamy Concealer - Dark Coffee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251004242",nome:"Soft Matte Complete Foundation - Marquises",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004280",nome:"Soft Matte Complete Foundation - Namibia",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251070483",nome:"Light Reflecting Foundation - Vienna",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070568",nome:"Light Reflecting Foundation - Vallauris",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070902",nome:"Light Reflecting Foundation - Manaus",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251133614",nome:"Powermatte Lipstick - Too Hot Too Hold",cat:"LIPS",linha:"Powermate Lipstick"},
+  {ean:"194251136783",nome:"Laguna Bronzing Powder - 08",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251133713",nome:"Afterglow Sensual Shine Lipstick - Voltage",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"607845034209",nome:"Afterglow Lip Balm - Orgasm",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845034216",nome:"Afterglow Lip Balm - Clean Cut",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845013563",nome:"Afterglow Lip Balm - Dolce Vita",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845013846",nome:"Afterglow Lip Balm - Throat",cat:"LIPS",linha:"Afterglow"},
+  {ean:"194251005706",nome:"Afterglow Lip Balm - Laguna",cat:"LIPS",linha:"Afterglow"},
+  {ean:"607845040262",nome:"Blush - Madly (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040309",nome:"Blush - Super Orgasm (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040378",nome:"Blush - Seduction (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040453",nome:"Blush - Unlawful (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040620",nome:"Blush - Impassioned (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040019",nome:"Blush - Desire (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040057",nome:"Blush - Amour (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040132",nome:"Blush - Orgasm (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040149",nome:"Blush - Sin (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040156",nome:"Blush - Exhibit A (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040170",nome:"Blush - Torrid (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040194",nome:"Blush - Lovejoy (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040293",nome:"Blush - Luster (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040316",nome:"Blush - Dolce Vita (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040774",nome:"Blush - Orgasm X (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040781",nome:"Blush - Tempted (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040798",nome:"Blush - Illicit (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845040330",nome:"Blush - Sex Appeal (Versão Antiga)",cat:"CHEEKS",linha:"Blush"},
+  {ean:"607845037903",nome:"MINI DUO Orgasm e Laguna Mini",cat:"CHEEKS",linha:"Mini Blush/Bronzer Duo"},
+  {ean:"607845058946",nome:"Light Reflecting Setting Powder Pressed - Crystal",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"607845051558",nome:"Liquid Blush - Orgasm",cat:"CHEEKS",linha:"Liquid Blush"},
+  {ean:"607845051565",nome:"Liquid Blush - Torrid",cat:"CHEEKS",linha:"Liquid Blush"},
+  {ean:"194251007014",nome:"MINI Blush - Orgasm (Versão Antiga)",cat:"CHEEKS",linha:"Mini Blush"},
+  {ean:"194251007021",nome:"MINI Blush - Orgasm X (Versão Antiga)",cat:"CHEEKS",linha:"Mini Blush"},
+  {ean:"607845015017",nome:"The Multiple - Copacabana (Versão Antiga)",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"607845066002",nome:"Natural Radiant Longwear Foundation - Oslo",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066101",nome:"Natural Radiant Longwear Foundation - Vallauris",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066194",nome:"Natural Radiant Longwear Foundation - Tahoe",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066224",nome:"Natural Radiant Longwear Foundation - Cadiz",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066279",nome:"Natural Radiant Longwear Foundation - Manaus",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066170",nome:"Natural Radiant Longwear Foundation - Aruba",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066255",nome:"Natural Radiant Longwear Foundation - Macao",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066293",nome:"Natural Radiant Longwear Foundation - Iguaçu",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066026",nome:"Natural Radiant Longwear Foundation - Yukon",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066064",nome:"Natural Radiant Longwear Foundation - Vienna",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066095",nome:"Natural Radiant Longwear Foundation - Patagonia",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066125",nome:"Natural Radiant Longwear Foundation - Sahel",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066149",nome:"Natural Radiant Longwear Foundation - Vanuatu",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066231",nome:"Natural Radiant Longwear Foundation - Caracas",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845066248",nome:"Natural Radiant Longwear Foundation - Belem",cat:"COMPLEXION",linha:"Natural Radiant Longwear Foundation"},
+  {ean:"607845099109",nome:"Pencil Sharpener - Apontador de Lápis de Maquiagem",cat:"BODY/ACCESSORIES",linha:"Pencil Sharpener"},
+  {ean:"607845022299",nome:"Pore & Shine Control Primer",cat:"COMPLEXION",linha:"Pore & Shine Control Primer"},
+  {ean:"194251021621",nome:"Powermatte Lip Pigment - Le Freak",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"194251021645",nome:"Powermatte Lip Pigment - Bad Guy",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"194251021669",nome:"Powermatte Lip Pigment - Dragon Girl",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027614",nome:"Powermatte Lip Pigment - London Calling",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027638",nome:"Powermatte Lip Pigment - Under My Thumb",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027652",nome:"Powermatte Lip Pigment - Warm Leatherette",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027683",nome:"Powermatte Lip Pigment - Give It Up",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027690",nome:"Powermatte Lip Pigment - Get Up Stand Up",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027720",nome:"Powermatte Lip Pigment - American Woman",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027737",nome:"Powermatte Lip Pigment - Starwoman",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027744",nome:"Powermatte Lip Pigment - Rock With You",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027751",nome:"Powermatte Lip Pigment - Done It Again",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027768",nome:"Powermatte Lip Pigment - Paint It Black",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027775",nome:"Powermatte Lip Pigment - Wild Night",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027805",nome:"Powermatte Lip Pigment - Somebody To Love",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027843",nome:"Powermatte Lip Pigment - Call Me",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027850",nome:"Powermatte Lip Pigment - You're No Good",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027867",nome:"Powermatte Lip Pigment - Vain",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"607845027874",nome:"Powermatte Lip Pigment - Spin Me",cat:"LIPS",linha:"Powermatte Lip Pigment"},
+  {ean:"194251013329",nome:"Pure Radiant Tinted Moisturizer - Norwich",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"607845023661",nome:"Pure Radiant Tinted Moisturizer - St.Moritz",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013343",nome:"Pure Radiant Tinted Moisturizer - Sidney",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013350",nome:"Pure Radiant Tinted Moisturizer - Auckland",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013367",nome:"Pure Radiant Tinted Moisturizer - Santiago",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013374",nome:"Pure Radiant Tinted Moisturizer - Marrakesh",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013381",nome:"Pure Radiant Tinted Moisturizer - Havana",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013398",nome:"Pure Radiant Tinted Moisturizer - Guernsey",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251013404",nome:"Pure Radiant Tinted Moisturizer - Granada",cat:"COMPLEXION",linha:"Pure Radiant Tinted Moisturizer Spf 30"},
+  {ean:"194251002965",nome:"Radiant Creamy Color Corrector - Light",cat:"COMPLEXION",linha:"Radiant Creamy Color Corrector"},
+  {ean:"194251003023",nome:"Radiant Creamy Color Corrector - Deep",cat:"COMPLEXION",linha:"Radiant Creamy Color Corrector"},
+  {ean:"607845012368",nome:"Radiant Creamy Concealer - Biscuit",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012375",nome:"Radiant Creamy Concealer - Caramel",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012689",nome:"Radiant Creamy Concealer - Macadamia",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012696",nome:"Radiant Creamy Concealer - Chestnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012269",nome:"Radiant Creamy Concealer - Marron Glace",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845012252",nome:"Radiant Creamy Concealer - Cafe Com Leche",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845013716",nome:"Radiant Creamy Concealer - Affogato",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845013747",nome:"Radiant Creamy Concealer - Nougatine",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845013761",nome:"Radiant Creamy Concealer - Toffee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845013778",nome:"Radiant Creamy Concealer - Praline",cat:"COMPLEXION",linha:"Radiant Creamy Concealer"},
+  {ean:"607845060406",nome:"Sheer Glow Foundation - Siberia",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060468",nome:"Sheer Glow Foundation - Barcelona",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060499",nome:"Sheer Glow Foundation - Tahoe",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060505",nome:"Sheer Glow Foundation - Cadiz",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060567",nome:"Sheer Glow Foundation - Gobi",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060574",nome:"Sheer Glow Foundation - Ceylan",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845060581",nome:"Sheer Glow Foundation - Macao",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845064121",nome:"Sheer Glow Foundation - New Guinea",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845064138",nome:"Sheer Glow Foundation - Trindrad",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845064145",nome:"Sheer Glow Foundation - New Orleans",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845064152",nome:"Sheer Glow Foundation - Benares",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845064169",nome:"Sheer Glow Foundation - Khartoum",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048770",nome:"Sheer Glow Foundation - Manaus",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048626",nome:"Sheer Glow Foundation - Sahel",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845022275",nome:"Smooth & Protect Primer SPF 50",cat:"COMPLEXION",linha:"Smooth & Protect Primer Spf 50"},
+  {ean:"607845022114",nome:"Smudge Proof Eyeshadow Base",cat:"EYES",linha:"Smudge Proof Eyeshadow Base"},
+  {ean:"607845012757",nome:"Soft Matte Complete Concealer - Chantilly",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012795",nome:"Soft Matte Complete Concealer - Honey",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012801",nome:"Soft Matte Complete Concealer - Custard",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012818",nome:"Soft Matte Complete Concealer - Macadamia",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012832",nome:"Soft Matte Complete Concealer - Biscuit",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012849",nome:"Soft Matte Complete Concealer - Caramel",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012887",nome:"Soft Matte Complete Concealer - Cafe",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845012900",nome:"Soft Matte Complete Concealer - Dark Coffee",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022381",nome:"Soft Matte Complete Concealer - Affogato",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022398",nome:"Soft Matte Complete Concealer - Nougatine",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022404",nome:"Soft Matte Complete Concealer - Madeleine",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022411",nome:"Soft Matte Complete Concealer - Cafe Au Lait",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022480",nome:"Soft Matte Complete Concealer - Marron Glace",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022497",nome:"Soft Matte Complete Concealer - Crema Catalana",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022558",nome:"Soft Matte Complete Concealer - Tiramisu",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022565",nome:"Soft Matte Complete Concealer - Praline",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"607845022572",nome:"Soft Matte Complete Concealer - Sucre D'Orge",cat:"COMPLEXION",linha:"Soft Matte Complete Concealer"},
+  {ean:"194251004648",nome:"Soft Matte Tinted Lip Balm - Unrestricted",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"194251004655",nome:"Soft Matte Tinted Lip Balm - Brief Encounter",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"194251004662",nome:"Soft Matte Tinted Lip Balm - Whip Lash",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"194251004679",nome:"Soft Matte Tinted Lip Balm - Touch Me",cat:"LIPS",linha:"Soft Matte Tinted Lip Balm"},
+  {ean:"607845024521",nome:"Velvet Matte Lip Pencil - Sex Machine",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024545",nome:"Velvet Matte Lip Pencil - Cruella",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024552",nome:"Velvet Matte Lip Pencil - Red Square",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024569",nome:"Velvet Matte Lip Pencil - Damned",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024576",nome:"Velvet Matte Lip Pencil - Dragon Girl",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024590",nome:"Velvet Matte Lip Pencil - Bahama",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024613",nome:"Velvet Matte Lip Pencil - Bettina",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024637",nome:"Velvet Matte Lip Pencil - Walkyrie",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024651",nome:"Velvet Matte Lip Pencil - Belle De Jour",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024668",nome:"Velvet Matte Lip Pencil - Roman Holiday",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024675",nome:"Velvet Matte Lip Pencil - Dolce Vita",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024705",nome:"Velvet Matte Lip Pencil - Bolero",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024712",nome:"Velvet Matte Lip Pencil - Train Bleu",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024729",nome:"Velvet Matte Lip Pencil - Never Say Never",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024774",nome:"Velvet Matte Lip Pencil - Mysterious Red",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024804",nome:"Velvet Matte Lip Pencil - Consuming Red",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024866",nome:"Velvet Matte Lip Pencil - Get Off",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024873",nome:"Velvet Matte Lip Pencil - Intriguing",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024880",nome:"Velvet Matte Lip Pencil - Do Me Baby",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024897",nome:"Velvet Matte Lip Pencil - Famous Red",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024903",nome:"Velvet Matte Lip Pencil - Let's Go Crazy",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024910",nome:"Velvet Matte Lip Pencil - Pussy Control",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024927",nome:"Velvet Matte Lip Pencil - Dirty Mind",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024934",nome:"Velvet Matte Lip Pencil - Endangered Red",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024941",nome:"Velvet Matte Lip Pencil - Unspoken",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845024958",nome:"Velvet Matte Lip Pencil - Lonely Heart",cat:"LIPS",linha:"Velvet Matte Lip Pencil"},
+  {ean:"607845011941",nome:"Voyageur Eyeshadow Palette - Suede",cat:"GIFTING",linha:"Voyageur"},
+  {ean:"607845011910",nome:"Voyageur Eyeshadow Palette - Cooper",cat:"GIFTING",linha:"Voyageur"},
+  {ean:"607845011927",nome:"Voyageur Eyeshadow Palette - Quartz",cat:"GIFTING",linha:"Voyageur"},
+  {ean:"607845051213",nome:"DUO Orgasm e Laguna - Paleta de Blush e Bronzer",cat:"CHEEKS",linha:"Blush/Bronzer Duo"},
+  {ean:"607845070337",nome:"MINI Climax Extreme Mascara",cat:"EYES",linha:"Mini Climax Extreme"},
+  {ean:"607845081913",nome:"High-Pigment Longwear Eyeliner - Gran Via",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"607845081968",nome:"High-Pigment Longwear Eyeliner - Park Avenue",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"607845082217",nome:"High-Pigment Longwear Eyeliner - Rua Bonapart",cat:"EYES",linha:"Longwear Eyeliner"},
+  {ean:"607845090717",nome:"Precision Lip Liner - Halong Bay",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090755",nome:"Precision Lip Liner - Cap Dail",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090762",nome:"Precision Lip Liner - Saint Raphael",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090793",nome:"Precision Lip Liner - Porquerolles",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090830",nome:"Precision Lip Liner - Arles",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090847",nome:"Precision Lip Liner - Menton",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090878",nome:"Precision Lip Liner - Port Grimaud",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090892",nome:"Precision Lip Liner - Rouge Marocain",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090908",nome:"Precision Lip Liner - Ride It",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090946",nome:"Precision Lip Liner - Star Rockin",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090984",nome:"Precision Lip Liner - Spunk",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845090991",nome:"Precision Lip Liner - Nasty Girl",cat:"LIPS",linha:"Precision Lip Liner"},
+  {ean:"607845058113",nome:"MINI Radiant Creamy Concealer - Vanilla",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845058120",nome:"MINI Radiant Creamy Concealer - Custard",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019732",nome:"MINI Radiant Creamy Concealer - Madeleine",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019756",nome:"MINI Radiant Creamy Concealer - Creme Brulee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019787",nome:"MINI Radiant Creamy Concealer - Marron Glace",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019817",nome:"MINI Radiant Creamy Concealer - Toffee",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019855",nome:"MINI Radiant Creamy Concealer - Praline",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019862",nome:"MINI Radiant Creamy Concealer - Biscuit",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019879",nome:"MINI Radiant Creamy Concealer - Sucre D'Orge",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019893",nome:"MINI Radiant Creamy Concealer - Walnut",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845058595",nome:"MINI Radiant Creamy Concealer - Caramel",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019916",nome:"MINI Radiant Creamy Concealer - Amande",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019923",nome:"MINI Radiant Creamy Concealer - Chocolat",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019947",nome:"MINI Radiant Creamy Concealer - Cacao",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"607845019824",nome:"MINI Radiant Creamy Concealer - Macadamia",cat:"COMPLEXION",linha:"Radiant Creamy Concealer Mini"},
+  {ean:"194251003979",nome:"Soft Matte Complete Foundation - Siberia",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004037",nome:"Soft Matte Complete Foundation - Deauville",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004150",nome:"Soft Matte Complete Foundation - Aruba",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004174",nome:"Soft Matte Complete Foundation - Tahoe",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004181",nome:"Soft Matte Complete Foundation - Moorea",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004198",nome:"Soft Matte Complete Foundation - Huahine",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004204",nome:"Soft Matte Complete Foundation - Cadiz",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004211",nome:"Soft Matte Complete Foundation - Caracas",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004228",nome:"Soft Matte Complete Foundation - Belem",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004259",nome:"Soft Matte Complete Foundation - Manaus",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251004266",nome:"Soft Matte Complete Foundation - New Caledonia",cat:"COMPLEXION",linha:"Soft Matte Complete Foundation"},
+  {ean:"194251075945",nome:"Light Reflecting Setting Powder Loose - Crystal",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251075969",nome:"Light Reflecting Setting Powder Loose - Shore",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251075983",nome:"Light Reflecting Setting Powder Loose - Mesa",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251076997",nome:"Light Reflecting Setting Powder Loose - Sable",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251076003",nome:"Light Reflecting Setting Powder Pressed - Shore",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251076027",nome:"Light Reflecting Setting Powder Pressed - Mesa",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251077017",nome:"Light Reflecting Setting Powder Pressed - Sable",cat:"COMPLEXION",linha:"Light Reflecting Setting Powder"},
+  {ean:"194251070346",nome:"Light Reflecting Foundation - Siberia",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070407",nome:"Light Reflecting Foundation - Yukon",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070605",nome:"Light Reflecting Foundation - Sahel",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070704",nome:"Light Reflecting Foundation - Aruba",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070766",nome:"Light Reflecting Foundation - Moorea",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070780",nome:"Light Reflecting Foundation - Huahine",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070827",nome:"Light Reflecting Foundation - Caracas",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070865",nome:"Light Reflecting Foundation - Macao",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070889",nome:"Light Reflecting Foundation - Marquises",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251070926",nome:"Light Reflecting Foundation - New Caledonia",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251077147",nome:"Afterglow Lip Shine - Triple X",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077154",nome:"Afterglow Lip Shine - A-Lister",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077178",nome:"Afterglow Lip Shine - Supervixen",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077215",nome:"Afterglow Lip Shine - Aragon",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077239",nome:"Afterglow Lip Shine - Lover To Lover",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077192",nome:"Afterglow Lip Shine - Chelsea Girls",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251077222",nome:"Afterglow Lip Shine - Turkish Delight",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251134499",nome:"Laguna Bronzing Cream - 02 (Original)",cat:"CHEEKS",linha:"Bronzing Cream"},
+  {ean:"194251130200",nome:"Summer Unrated Eyeshadow Palette",cat:"GIFTING",linha:"Summer Unrated"},
+  {ean:"194251130286",nome:"Summer Unrated Lip Mask - Orgasm",cat:"LIPS",linha:"Summer Unrated"},
+  {ean:"194251039466",nome:"Light Reflecting Moisturizer",cat:"MAKEUP",linha:"Narsskin Light Reflecting Moisturizer"},
+  {ean:"194251038049",nome:"Light Reflecting Restorative Night Treatment",cat:"MAKEUP",linha:"Narsskin Light Reflecting Restorative Night Treatment"},
+  {ean:"194251003832",nome:"Light Reflecting Firming Serum",cat:"MAKEUP",linha:"Narsskin Light Reflecting Firming Serum"},
+  {ean:"194251076379",nome:"MINI Light Reflecting Setting Powder Pressed - Crystal",cat:"COMPLEXION",linha:"Mini Light Reflecting Setting Powder"},
+  {ean:"194251136264",nome:"The Multiple - Orgasm (Orgasm Collection)",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251136271",nome:"The Multiple - Orgasm Rush (Orgasm Collection)",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251136080",nome:"Soft Matte Advanced Perfecting Powder - 3 - Creek",cat:"COMPLEXION",linha:"Soft Matte Powder"},
+  {ean:"194251136776",nome:"Laguna Bronzing Powder - 07",cat:"CHEEKS",linha:"LAGUNA BRONZING POWDER"},
+  {ean:"194251136707",nome:"Laguna Bronzing Powder - 00",cat:"CHEEKS",linha:"LAGUNA BRONZING POWDER"},
+  {ean:"194251136738",nome:"Laguna Bronzing Powder - 03",cat:"CHEEKS",linha:"LAGUNA BRONZING POWDER"},
+  {ean:"194251136745",nome:"Laguna Bronzing Powder - 04",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251136752",nome:"Laguna Bronzing Powder - 05",cat:"CHEEKS",linha:"LAGUNA BRONZING POWDER"},
+  {ean:"194251136769",nome:"Laguna Bronzing Powder - 05 (Talc Free)",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251137636",nome:"MINI Laguna Bronzing Powder - 02 (Original)",cat:"CHEEKS",linha:"Bronzing Powder Talc Free"},
+  {ean:"194251133669",nome:"Afterglow Sensual Shine Lipstick - Devotion",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251133676",nome:"Afterglow Sensual Shine Lipstick - Dolce Vita",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251133683",nome:"Afterglow Sensual Shine Lipstick - Orgasm",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251133690",nome:"Afterglow Sensual Shine Lipstick - On Edge",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"194251133706",nome:"Afterglow Sensual Shine Lipstick - Truth Or Dare",cat:"LIPS",linha:"Sensual Shine Lipstick"},
+  {ean:"607845048596",nome:"Sheer Glow Foundation - Patagonia",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"607845048817",nome:"Sheer Glow Foundation - Zambie",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"194251139838",nome:"Powermatte High-Intensity Lip Pencil - Walkyrie",cat:"LIPS",linha:"Powermatte High-Intensity Lip Pencil"},
+  {ean:"194251140407",nome:"Blush Talc-Free - Orgasm",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140414",nome:"Blush Talc-Free - Deep Throat",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140445",nome:"Blush Talc-Free - Behave",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140452",nome:"Blush Talc-Free - Dolce Vita",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140469",nome:"Blush Talc-Free - Torrid",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140476",nome:"Blush Talc-Free - Amour",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140483",nome:"Blush Talc-Free - Gina",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140490",nome:"Blush Talc-Free - Thrill",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140506",nome:"Blush Talc-Free - Orgasm Edge",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140513",nome:"Blush Talc-Free - Orgasm X",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140544",nome:"Blush Talc-Free - Orgasm Rush",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140568",nome:"Blush Talc-Free - Obsession",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140575",nome:"Blush Talc-Free - Exhibit A",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251140582",nome:"Blush Talc-Free - Dominant",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251144399",nome:"MINI Blush Talc-Free - Orgasm",cat:"CHEEKS",linha:"Blush Talc Free Mini"},
+  {ean:"194251144405",nome:"MINI Blush Talc-Free - Orgasm Edge",cat:"CHEEKS",linha:"Blush Talc Free Mini"},
+  {ean:"194251144252",nome:"Blush Talc-Free - Orgasm (REFIL)",cat:"CHEEKS",linha:"Blush Talc Free"},
+  {ean:"194251136042",nome:"Light Reflecting Hydrating Primer",cat:"MAKEUP",linha:"Light Reflecting Primer"},
+  {ean:"194251145204",nome:"MINI DUO Powermatte High-Intensity Lip Pencil - Cruella/Dragon Girl",cat:"LIPS",linha:"Blush & Lip Icons Powermatte"},
+  {ean:"194251145211",nome:"MINI DUO Powermatte High-Intensity Lip Pencil - Dolce Vita/Take Me Home",cat:"LIPS",linha:"Blush & Lip Icons Powermatte"},
+  {ean:"194251145303",nome:"MINI DUO Afterglow Liquid Blush & Lip Shine - Dolce Vita e Aragon",cat:"LIPS",linha:"Blush & Lip Icons Afterglow"},
+  {ean:"194251145310",nome:"MINI DUO Afterglow Liquid Blush & Lip Shine - Dolce Vita e Chelsea Girls",cat:"LIPS",linha:"Blush & Lip Icons Afterglow"},
+  {ean:"194251136967",nome:"Explicit Lipstick - Unauthorized",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145051",nome:"Explicit Lipstick - After Party",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145068",nome:"Explicit Lipstick - No Rules",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145549",nome:"Explicit Lipstick - Unauthorized (Refil)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145594",nome:"Explicit Lipstick - Body Heat (Refil)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145709",nome:"Explicit Lipstick - Rendez-Vous (Refil)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145716",nome:"Explicit Lipstick - Liaison (Refil)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251145723",nome:"Explicit Lipstick - Luscious (Refil)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251144955",nome:"Explicit Lipstick (Case)",cat:"LIPS",linha:"Explicit"},
+  {ean:"194251139944",nome:"Light Reflecting Makeup Setting Mist",cat:"MAKEUP",linha:"Light Reflecting Mist"},
+  {ean:"194251039480",nome:"Light Reflecting Eye & Lash Gel",cat:"MAKEUP",linha:"Narsskin Light Reflecting Eye & Lash Gel"},
+  {ean:"607845060451",nome:"Sheer Glow Foundation - Santa Fe",cat:"COMPLEXION",linha:"Sheer Glow Foundation"},
+  {ean:"194251147239",nome:"Pure Luxury Light Reflecting Cheek & Eye Palette - I (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Palette"},
+  {ean:"194251147246",nome:"Pure Luxury Light Reflecting Cheek & Eye Palette - II (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Palette"},
+  {ean:"194251148632",nome:"Light Reflecting Setting Powder Pressed - Gold Dust (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Powder"},
+  {ean:"194251148656",nome:"MINI Afterglow Lip Shine Set (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Bundle"},
+  {ean:"194251148687",nome:"DUO Afterglow Liquid Blush (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Bundle"},
+  {ean:"194251148700",nome:"MINI Light Reflecting Setting Powder Set (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Mini"},
+  {ean:"194251148717",nome:"MINI DUO Powermatte Lip (Holiday 24)",cat:"GIFTING",linha:"HOLIDAY 24 Mini"},
+  {ean:"194251144221",nome:"Brow Shaping Gel",cat:"EYES",linha:"Brow Gel"},
+  {ean:"194251145129",nome:"MINI Orgasm Lip & Blush Set",cat:"GIFTING",linha:"Orgasm"},
+  {ean:"194251149011",nome:"Afterglow Tempting Eyeshadow Palette",cat:"GIFTING",linha:"Afterglow"},
+  {ean:"607845018308",nome:"Eyelash Curler",cat:"EYES",linha:"Eyelash Curler"},
+  {ean:"194251149158",nome:"Light Reflecting Foundation - Yulong",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150130",nome:"Light Reflecting Foundation - Lima",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150147",nome:"Light Reflecting Foundation - Bruges",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251146621",nome:"Explicit Lipstick - Only Yours (Amour Collection)",cat:"GIFTING",linha:"Amour Collection"},
+  {ean:"194251146638",nome:"Light Reflecting Setting Powder Pressed - Crystal (Amour Collection)",cat:"GIFTING",linha:"Amour Collection"},
+  {ean:"194251150154",nome:"Light Reflecting Foundation - Lanai",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150161",nome:"Light Reflecting Foundation - Porto",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251159812",nome:"Light Reflecting Foundation - Timaru",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150222",nome:"Light Reflecting Foundation - Perth",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251159836",nome:"Light Reflecting Foundation - Ambato",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251159805",nome:"Light Reflecting Foundation - La Serena",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150239",nome:"Light Reflecting Foundation - Alexandria",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251159829",nome:"Light Reflecting Foundation - Port Louis",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150178",nome:"Light Reflecting Foundation - Cordoba",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150185",nome:"Light Reflecting Foundation - Phoenix",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150208",nome:"Light Reflecting Foundation - Lagos",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251150192",nome:"Light Reflecting Foundation - Seville",cat:"COMPLEXION",linha:"Light Reflecting Foundation"},
+  {ean:"194251147000",nome:"Total Seductive Eyeshadow Stick - Orgasm",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"194251147017",nome:"Total Seductive Eyeshadow Stick - Hustle",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"194251147024",nome:"Total Seductive Eyeshadow Stick - Laguna",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"194251151083",nome:"Total Seductive Eyeshadow Stick - Wired",cat:"EYES",linha:"Summer Seductive"},
+  {ean:"194251146966",nome:"Hot Escape Cheek Palette - Light",cat:"GIFTING",linha:"Hot Escape"},
+  {ean:"194251152004",nome:"Hot Escape Cheek Palette - Medium",cat:"GIFTING",linha:"Hot Escape"},
+  {ean:"194251155128",nome:"Hot Escape Cheek Palette - Medium Deep",cat:"GIFTING",linha:"Hot Escape"},
+  {ean:"194251156224",nome:"Hot Escape Cheek Palette - Deep",cat:"GIFTING",linha:"Hot Escape"},
+  {ean:"194251151298",nome:"Afterglow Lip Oil - Highlife",cat:"LIPS",linha:"Afterglow"},
+  {ean:"194251151519",nome:"Afterglow Lip Oil - Orgasm",cat:"LIPS",linha:"Afterglow"},
+  {ean:"194251151526",nome:"Afterglow Lip Oil - Wondrous",cat:"LIPS",linha:"Afterglow"},
+  {ean:"194251146263",nome:"The Multiple - Behave",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146270",nome:"The Multiple - Orgasm",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146287",nome:"The Multiple - Dolce Vita",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251151021",nome:"The Multiple - Fierce",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251151038",nome:"The Multiple - Sinful",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251151045",nome:"The Multiple - Fling",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146294",nome:"The Multiple - Bad Habit",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146300",nome:"The Multiple - Swing",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146317",nome:"The Multiple - Trance",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146249",nome:"The Multiple - Sex Appeal",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251146256",nome:"The Multiple - Dazed",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251151052",nome:"The Multiple - Hot Take",cat:"CHEEKS",linha:"Multiple"},
+  {ean:"194251159126",nome:"Afterglow Lip Shine - Dolce Vita",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251159133",nome:"Afterglow Lip Shine - Get Happy",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251159140",nome:"Afterglow Lip Shine - Make A Move",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251159157",nome:"Afterglow Lip Shine - Smooth Talk",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251159164",nome:"Afterglow Lip Shine - What If",cat:"LIPS",linha:"Afterglow Lip Shine"},
+  {ean:"194251146904",nome:"DUO Orgasm Matte & Glow Blush",cat:"GIFTING",linha:""},
+  {ean:"194251146911",nome:"DUO Afterglow Liquid Blush",cat:"GIFTING",linha:""},
+  {ean:"194251146928",nome:"DUO Afterglow Lip Balm",cat:"GIFTING",linha:""},
+  {ean:"607845094975",nome:"Audacious Lipstick - Mona",cat:"LIPS",linha:"Audacious Lipstick"},
+  {ean:"607845053217",nome:"Single Eyeshadow - Tahoe",cat:"EYES",linha:"Single Eyeshadow"},
+  {ean:"194251151502",nome:"Afterglow Lip Oil - Laguna",cat:"LIPS",linha:"Afterglow"},
+  {ean:"194251165899",nome:"Ethereal Aura Blush Palette - New Realm (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160825",nome:"Light Reflecting Prismatic Powder - Moonwave (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160795",nome:"Aura Illuminating Face & Body Powder - Sky Rocket (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160870",nome:"Mini Multiple Set (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160788",nome:"Explicit Lipstick x Iris Van Herpen - Blame (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251163628",nome:"Gleam Afterglow Lip Shine - Intergalatic (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160849",nome:"Line & Shine Lip Duo - Orgasm/Rosebud (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251161006",nome:"Climax Mascara Duo - Explicit Black (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251160856",nome:"Line & Shine Lip Duo - Spunk & Nympho (Holiday 25)",cat:"GIFTING",linha:"HOLIDAY 25"},
+  {ean:"194251146065",nome:"Light Reflecting Luminizer Powder - Electra",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251146041",nome:"Light Reflecting Luminizer Powder - Eros",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251146058",nome:"Light Reflecting Luminizer Powder - Heavenly",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251151007",nome:"Light Reflecting Luminizer Powder - Ophelia",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251151229",nome:"Light Reflecting Luminizer Powder - Total Eclipse",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251150352",nome:"Light Reflecting Luminizer Powder Refill - Electra",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251150338",nome:"Light Reflecting Luminizer Powder Refill - Eros",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251150345",nome:"Light Reflecting Luminizer Powder Refill - Heavenly",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251151069",nome:"Light Reflecting Luminizer Powder Refill - Ophelia",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"},
+  {ean:"194251151236",nome:"Light Reflecting Luminizer Powder Refill - Total Eclipse",cat:"CHEEKS",linha:"Light Reflecting Luminizing Powder"}
+];
+
+const cats = [...new Set(produtos.map(p=>p.cat))].sort();
+
+// Setup estado/loja
+Object.keys(lojas).forEach(e=>{
+  const o=document.createElement('option'); o.value=e; o.textContent=e;
+  document.getElementById('sel-estado').appendChild(o);
+});
+document.getElementById('sel-estado').addEventListener('change',function(){
+  const sl=document.getElementById('sel-loja');
+  sl.innerHTML='<option value="">Selecione...</option>';
+  if(this.value){
+    lojas[this.value].forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;sl.appendChild(o);});
+    sl.disabled=false;
+  } else sl.disabled=true;
+});
+
+let skuCount=0;
+function addSku(){
+  skuCount++;
+  const n=skuCount;
+  const div=document.createElement('div');
+  div.className='sku-block'; div.id='sku-'+n;
+  div.innerHTML=`
+    <div class="sku-num">Produto #${n}</div>
+    ${n>1?`<button class="remove-btn" type="button" onclick="removeSku(${n})">×</button>`:''}
+    <div class="row">
+      <div class="field">
+        <label>Categoria</label>
+        <select id="cat-${n}" onchange="updateLinhas(${n})"><option value="">Selecione...</option>${cats.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      </div>
+      <div class="field">
+        <label>Linha</label>
+        <select id="linha-${n}" disabled onchange="updateProdutos(${n})"><option value="">Selecione...</option></select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field" style="grid-column:1/3">
+        <label>Produto (EAN)</label>
+        <select id="prod-${n}" disabled><option value="">Selecione...</option></select>
+      </div>
+      <div class="field">
+        <label>Qtd</label>
+        <input type="number" id="qty-${n}" min="1" value="1" style="text-align:center">
+      </div>
+    </div>`;
+  document.getElementById('sku-list').appendChild(div);
+}
+
+function removeSku(n){document.getElementById('sku-'+n).remove();}
+
+function updateLinhas(n){
+  const cat=document.getElementById('cat-'+n).value;
+  const sl=document.getElementById('linha-'+n);
+  const sp=document.getElementById('prod-'+n);
+  sl.innerHTML='<option value="">Selecione...</option>';
+  sp.innerHTML='<option value="">Selecione...</option>';
+  sp.disabled=true;
+  if(cat){
+    const linhas=[...new Set(produtos.filter(p=>p.cat===cat).map(p=>p.linha))].sort();
+    linhas.forEach(l=>{const o=document.createElement('option');o.value=l;o.textContent=l;sl.appendChild(o);});
+    sl.disabled=false;
+  } else sl.disabled=true;
+}
+
+function updateProdutos(n){
+  const cat=document.getElementById('cat-'+n).value;
+  const linha=document.getElementById('linha-'+n).value;
+  const sp=document.getElementById('prod-'+n);
+  sp.innerHTML='<option value="">Selecione...</option>';
+  if(linha){
+    produtos.filter(p=>p.cat===cat&&p.linha===linha).forEach(p=>{
+      const o=document.createElement('option');o.value=p.ean;o.textContent=`${p.ean} — ${p.nome}`;sp.appendChild(o);
+    });
+    sp.disabled=false;
+  } else sp.disabled=true;
+}
+
+addSku();
+document.getElementById('add-sku').addEventListener('click',addSku);
+
+document.getElementById('btn-enviar').addEventListener('click',async function(){
+  const resp=document.getElementById('responsavel').value.trim();
+  const estado=document.getElementById('sel-estado').value;
+  const loja=document.getElementById('sel-loja').value;
+  if(!resp||!estado||!loja){showMsg('Preencha responsável, estado e loja.','error');return;}
+
+  const skus=[];
+  document.querySelectorAll('.sku-block').forEach(b=>{
+    const id=b.id.replace('sku-','');
+    const ean=document.getElementById('prod-'+id)?.value;
+    const qty=document.getElementById('qty-'+id)?.value;
+    const prod=document.getElementById('prod-'+id);
+    const nome=prod?.options[prod.selectedIndex]?.text||'';
+    const cat=document.getElementById('cat-'+id)?.value;
+    const linha=document.getElementById('linha-'+id)?.value;
+    if(ean) skus.push({ean,nome,cat,linha,qty});
+  });
+  if(!skus.length){showMsg('Adicione pelo menos um produto.','error');return;}
+
+  const btn=document.getElementById('btn-enviar');
+  btn.disabled=true; btn.textContent='Enviando...';
+
+  const dt=new Date().toLocaleString('pt-BR');
+  const rows=skus.map(s=>({
+    'Data/Hora':dt,'Loja':loja,'Responsável':resp,
+    'Família':s.linha,'Codigo SKU':s.ean,'Produto':s.nome,'Quantidade':s.qty,'Outro':''
+  }));
+
+  try{
+    await fetch(SHEET_URL,{method:'POST',body:JSON.stringify(rows),headers:{'Content-Type':'application/json'}});
+    showMsg(`✓ ${skus.length} produto(s) registrado(s) com sucesso!`,'success');
+    btn.textContent='Enviar registro'; btn.disabled=false;
+  }catch(e){
+    showMsg('Erro ao enviar. Verifique a URL do Apps Script.','error');
+    btn.textContent='Enviar registro'; btn.disabled=false;
+  }
+});
+
+function showMsg(t,type){
+  const m=document.getElementById('msg');
+  m.textContent=t; m.className='msg '+type; m.style.display='block';
+  setTimeout(()=>m.style.display='none',5000);
+}
+</script>
+</body>
+</html>
